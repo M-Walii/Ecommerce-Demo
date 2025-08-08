@@ -1,8 +1,10 @@
+// Cart page: displays line items, unified-currency pricing, and order summary
 import React from "react";
 import { Footer, Navbar } from "../components";
 import { useSelector, useDispatch } from "react-redux";
 import { addCart, delCart } from "../redux/action";
 import { Link } from "react-router-dom";
+import { formatPrice } from "../utils/formatPrice";
 
 const Cart = () => {
   const state = useSelector((state) => state.handleCart);
@@ -34,8 +36,9 @@ const Cart = () => {
     let subtotal = 0;
     let shipping = 30.0;
     let totalItems = 0;
+    const cartCurrency = state[0]?.currency || 'USD';
     state.map((item) => {
-      return (subtotal += item.price * item.qty);
+      return (subtotal += (Number(item.price) || 0) * item.qty);
     });
 
     state.map((item) => {
@@ -52,7 +55,7 @@ const Cart = () => {
                     <h5 className="mb-0">Item List</h5>
                   </div>
                   <div className="card-body">
-                    {state.map((item) => {
+                        {state.map((item) => {
                       return (
                         <div key={item.id}>
                           <div className="row d-flex align-items-center">
@@ -72,45 +75,53 @@ const Cart = () => {
                             </div>
 
                             <div className="col-lg-5 col-md-6">
-                              <p>
+                              <p className="mb-1">
                                 <strong>{item.title}</strong>
                               </p>
-                              {/* <p>Color: blue</p>
-                              <p>Size: M</p> */}
+                              {item.variantLabel && (
+                                <p className="text-muted mb-0">Variant: {item.variantLabel}</p>
+                              )}
                             </div>
 
                             <div className="col-lg-4 col-md-6">
                               <div
-                                className="d-flex mb-4"
-                                style={{ maxWidth: "300px" }}
+                                className="d-flex align-items-center mb-4"
+                                style={{ maxWidth: "240px", gap: 8 }}
                               >
                                 <button
-                                  className="btn px-3"
+                                  className="btn btn-outline-secondary btn-sm"
+                                  aria-label="Decrease quantity"
                                   onClick={() => {
                                     removeItem(item);
                                   }}
                                 >
-                                  <i className="fas fa-minus"></i>
+                                  <i className="fa fa-minus"></i>
                                 </button>
 
-                                <p className="mx-5">{item.qty}</p>
+                                <span
+                                  className="px-3 py-1 border-top border-bottom"
+                                  style={{ minWidth: 36, textAlign: "center", lineHeight: 1.2 }}
+                                >
+                                  {item.qty}
+                                </span>
 
                                 <button
-                                  className="btn px-3"
+                                  className="btn btn-outline-secondary btn-sm"
+                                  aria-label="Increase quantity"
                                   onClick={() => {
                                     addItem(item);
                                   }}
                                 >
-                                  <i className="fas fa-plus"></i>
+                                  <i className="fa fa-plus"></i>
                                 </button>
                               </div>
 
-                              <p className="text-start text-md-center">
+                              <div className="text-start text-md-center">
                                 <strong>
                                   <span className="text-muted">{item.qty}</span>{" "}
-                                  x ${item.price}
+                                  x {formatPrice(Number(item.price) || 0, { currency: cartCurrency })}
                                 </strong>
-                              </p>
+                              </div>
                             </div>
                           </div>
 
@@ -129,18 +140,19 @@ const Cart = () => {
                   <div className="card-body">
                     <ul className="list-group list-group-flush">
                       <li className="list-group-item d-flex justify-content-between align-items-center border-0 px-0 pb-0">
-                        Products ({totalItems})<span>${Math.round(subtotal)}</span>
+                        Products ({totalItems})
+                        <span>{formatPrice(Math.round(subtotal), { currency: cartCurrency })}</span>
                       </li>
                       <li className="list-group-item d-flex justify-content-between align-items-center px-0">
                         Shipping
-                        <span>${shipping}</span>
+                        <span>{formatPrice(shipping, { currency: cartCurrency })}</span>
                       </li>
                       <li className="list-group-item d-flex justify-content-between align-items-center border-0 px-0 mb-3">
                         <div>
                           <strong>Total amount</strong>
                         </div>
                         <span>
-                          <strong>${Math.round(subtotal + shipping)}</strong>
+                          <strong>{formatPrice(Math.round(subtotal + shipping), { currency: cartCurrency })}</strong>
                         </span>
                       </li>
                     </ul>

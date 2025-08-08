@@ -1,41 +1,91 @@
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { addCart } from "../redux/action";
+// Products: fetches list and renders ProductCard tiles
+// Augments a few items to demonstrate variants and OOS behaviors for test coverage
+import React, { useState, useEffect, useRef } from "react";
+import ProductCard from "./ProductCard";
 
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-
-import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
 
 const Products = () => {
   const [data, setData] = useState([]);
   const [filter, setFilter] = useState(data);
   const [loading, setLoading] = useState(false);
-  let componentMounted = true;
-
-  const dispatch = useDispatch();
-
-  const addProduct = (product) => {
-    dispatch(addCart(product));
-  };
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     const getProducts = async () => {
       setLoading(true);
       const response = await fetch("https://fakestoreapi.com/products/");
-      if (componentMounted) {
-        setData(await response.clone().json());
-        setFilter(await response.json());
+      const raw = await response.json();
+
+      // Add demo variants and stock states so UI states are visible
+      const augment = (list) =>
+        list.map((p, idx) => {
+          const base = { ...p };
+          if (idx === 0) {
+            // First card: plain product (no variants), ensure Add to Cart is available
+            base.stock = 10;
+          } else if (idx === 1) {
+            // Out of stock card
+            base.stock = 0;
+          } else if (idx === 2) {
+            // Material variants (no color, since image doesn't change)
+            base.material = [
+              { name: "Cotton", price: p.price, stock: 6 },
+              { name: "Wool", price: p.price + 12, stock: 3 },
+              { name: "Silk", price: p.price + 25, stock: 0 },
+            ];
+            base.stock = 9;
+          } else if (idx === 3) {
+            // Size variants with explicit prices and stock
+            base.size = [
+              { name: "XS", price: Math.max(0, p.price - 8), stock: 4 },
+              { name: "S", price: Math.max(0, p.price - 4), stock: 6 },
+              { name: "M", price: p.price, stock: 8 },
+              { name: "L", price: p.price + 8, stock: 5 },
+              { name: "XL", price: p.price + 14, stock: 2 },
+            ];
+            base.stock = 25;
+          } else if (idx === 4) {
+            // All variants OOS -> should show global Out of Stock
+            base.variants = [
+              { name: "32GB", price: p.price, stock: 0 },
+              { name: "64GB", price: p.price + 10, stock: 0 },
+            ];
+            base.stock = 10; // product-level positive but all variants zero
+          } else if (idx === 5) {
+            // Memory configuration variants (clarity over "GB GB")
+            base.storage = [
+              { name: "64 GB", price: p.price, stock: 4 },
+              { name: "128 GB", price: p.price + 30, stock: 3 },
+              { name: "256 GB", price: p.price + 80, stock: 1 },
+            ];
+            base.stock = 8;
+          } else if (idx === 6) {
+            // Edition type with clear price deltas
+            base.variant = [
+              { name: "Standard", deltaPrice: 0, stock: 10 },
+              { name: "Plus", deltaPrice: 15, stock: 6 },
+              { name: "Pro", deltaPrice: 40, stock: 0 },
+            ];
+            base.stock = 16;
+          }
+          return base;
+        });
+
+      if (isMountedRef.current) {
+        const augmented = augment(raw);
+        setData(augmented);
+        setFilter(augmented);
         setLoading(false);
       }
-
-      return () => {
-        componentMounted = false;
-      };
     };
 
     getProducts();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const Loading = () => {
@@ -107,54 +157,11 @@ const Products = () => {
           </button>
         </div>
 
-        {filter.map((product) => {
-          return (
-            <div
-              id={product.id}
-              key={product.id}
-              className="col-md-4 col-sm-6 col-xs-8 col-12 mb-4"
-            >
-              <div className="card text-center h-100" key={product.id}>
-                <img
-                  className="card-img-top p-3"
-                  src={product.image}
-                  alt="Card"
-                  height={300}
-                />
-                <div className="card-body">
-                  <h5 className="card-title">
-                    {product.title.substring(0, 12)}...
-                  </h5>
-                  <p className="card-text">
-                    {product.description.substring(0, 90)}...
-                  </p>
-                </div>
-                <ul className="list-group list-group-flush">
-                  <li className="list-group-item lead">$ {product.price}</li>
-                  {/* <li className="list-group-item">Dapibus ac facilisis in</li>
-                    <li className="list-group-item">Vestibulum at eros</li> */}
-                </ul>
-                <div className="card-body">
-                  <Link
-                    to={"/product/" + product.id}
-                    className="btn btn-dark m-1"
-                  >
-                    Buy Now
-                  </Link>
-                  <button
-                    className="btn btn-dark m-1"
-                    onClick={() => {
-                      toast.success("Added to cart");
-                      addProduct(product);
-                    }}
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {filter.map((product) => (
+          <div id={product.id} key={product.id} className="col-md-4 col-sm-6 col-xs-8 col-12 mb-4">
+            <ProductCard product={product} currency="USD" />
+          </div>
+        ))}
       </>
     );
   };
